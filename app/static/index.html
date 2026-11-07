@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111d35">
+    <title>Investimentos — carteira e projeções</title>
+    <link rel="stylesheet" href="/static/style.css?v=1.5.0">
+    <script src="/static/app.js?v=1.5.0" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Investimentos, início">
+          <span class="brand-mark">I</span>
+          <span><strong>Investimentos</strong><small>carteira e projeções</small></span>
+        </a>
+        <div class="top-actions">
+          <span class="current-user" id="current-user-label"></span>
+          <button class="button button-quiet" id="users-button" type="button" hidden>Usuários</button>
+          <button class="button button-quiet" id="change-password-button" type="button">Trocar senha</button>
+          <button class="button button-quiet" id="backup-button" type="button">Baixar backup</button>
+          <button class="button button-quiet" id="restore-button" type="button">Restaurar backup</button>
+          <input id="restore-file" type="file" accept="application/json,.json" hidden>
+          <button class="button button-quiet" id="logout-button" type="button">Sair</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="intro">
+          <div>
+            <p class="eyebrow">ACOMPANHAMENTO DA CARTEIRA</p>
+            <h1>Seus investimentos, em um só lugar.</h1>
+            <p class="muted">Valores de referência para <time id="as-of">—</time></p>
+          </div>
+          <div class="intro-note"><span class="pulse"></span> Atualização manual dos valores</div>
+        </section>
+
+        <section class="panel limited-access" id="limited-access" hidden>
+          <p>Seu usuário não tem permissão para visualizar a carteira. Os recursos autorizados continuam disponíveis nesta tela.</p>
+        </section>
+
+        <section class="summary-grid" aria-label="Resumo da carteira">
+          <article class="summary-card">
+            <span class="summary-label">Total investido</span>
+            <strong id="invested-total">—</strong>
+            <span class="summary-sub" id="holdings-count">Nenhum investimento cadastrado</span>
+          </article>
+          <article class="summary-card summary-card-primary">
+            <span class="summary-label">Valor atual</span>
+            <strong id="current-total">—</strong>
+            <span class="summary-sub">Valores informados por você</span>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">Ganho / perda acumulado</span>
+            <strong id="gain-total">—</strong>
+            <span class="summary-sub" id="return-total">—</span>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">Projeção no próximo dia</span>
+            <strong id="projected-next-day">—</strong>
+            <span class="summary-sub" id="projection-days-next">Passo seguinte da fórmula</span>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">Projeção em 30 dias</span>
+            <strong id="projected-30d">—</strong>
+            <span class="summary-sub" id="projection-days">— dias úteis no período</span>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">Projeção em 360 dias</span>
+            <strong id="projected-360d">—</strong>
+            <span class="summary-sub" id="projection-days-year">— dias úteis no período</span>
+          </article>
+        </section>
+
+        <section class="panel portfolio-panel">
+          <div id="positions-view">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">POSIÇÕES</p>
+              <h2 id="positions-title">Minha carteira</h2>
+            </div>
+            <div class="panel-actions">
+              <button class="button button-secondary" id="brokerage-back-button" type="button" hidden>← Minha carteira</button>
+              <button class="button button-secondary" id="refresh-button" type="button" title="Recarregar os valores calculados">Recalcular</button>
+              <button class="button button-secondary" id="quotes-button" type="button">Atualizar valores</button>
+              <button class="button button-secondary" id="import-agora-button" type="button">Importar PDF Ágora</button>
+              <input id="agora-file" type="file" accept="application/pdf,.pdf" hidden>
+              <button class="button button-primary" id="add-button" type="button"><span aria-hidden="true">＋</span> Produto</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Corretora</th>
+                  <th>Produto · clique para ver aportes</th>
+                  <th>Tipo</th>
+                  <th>Data média dos aportes</th>
+                  <th class="numeric">Investido</th>
+                  <th class="numeric">Valor atual</th>
+                  <th class="numeric">Retorno acumulado</th>
+                  <th class="numeric">Taxa diária</th>
+                  <th class="numeric">Taxa mensal proj.</th>
+                  <th class="numeric">Taxa anual proj.</th>
+                  <th class="numeric">Próximo dia</th>
+                  <th class="numeric">30 dias</th>
+                  <th class="numeric">360 dias</th>
+                </tr>
+              </thead>
+              <tbody id="holdings-body">
+                <tr><td colspan="13" class="empty-state">Carregando sua carteira…</td></tr>
+              </tbody>
+              <tfoot id="holdings-summary"></tfoot>
+            </table>
+          </div>
+          <div id="empty-callout" class="empty-callout" hidden>
+            <span class="empty-icon">↗</span>
+            <div><strong>Comece cadastrando um produto</strong><p>Escolha um produto existente ou cadastre corretora, tipo e nome. Depois registre os aportes individuais.</p></div>
+            <button class="button button-primary" type="button" id="empty-add-button">Cadastrar produto</button>
+          </div>
+          <div class="projection-note">
+            <span class="info-dot">i</span>
+            <span>As taxas diária, mensal e anual são projeções brutas a partir da rentabilidade observada. Próximo dia exige 5 dias de histórico; 30 dias exige 30; 360 dias exige 90, para não extrapolar retornos de poucos dias. O app não guarda histórico de cotações para calcular o retorno efetivamente realizado nos últimos 12 meses. Sem data de aporte, as projeções ficam indisponíveis; tributos e taxas não são descontados.</span>
+          </div>
+          </div>
+
+          <div id="contributions-view" hidden>
+            <div class="panel-heading contribution-heading">
+              <div class="contribution-heading-title">
+                <button class="button button-secondary" id="back-to-positions" type="button">← Minha carteira</button>
+                <div>
+                  <p class="eyebrow">APORTES INDIVIDUAIS</p>
+                  <h2 id="contributions-title">Investimento</h2>
+                  <small class="muted" id="contributions-subtitle"></small>
+                </div>
+              </div>
+              <div class="details-heading-actions">
+                <button class="button button-secondary" id="edit-parent-button" type="button">Editar produto</button>
+                <button class="button button-primary" id="add-contribution-button" type="button">＋ Novo aporte</button>
+              </div>
+            </div>
+            <p class="muted contributions-note">Cada linha mostra retorno, taxa diária, dias decorridos e projeções. Próximo dia exige 5 dias de histórico; 30 dias exige 30; 360 dias exige 90. O rodapé agrega os aportes conforme a linha de totais da planilha.</p>
+            <div class="table-wrap contribution-table-wrap">
+              <table class="contributions-table">
+                <thead><tr>
+                  <th>Data do aporte</th><th class="numeric">Unidades</th><th class="numeric">Investido</th>
+                  <th class="numeric">Valor atual</th><th class="numeric">Retorno</th><th class="numeric">Taxa diária</th>
+                  <th class="numeric">Dias</th><th class="numeric">Próximo dia</th><th class="numeric">Próximo mês</th>
+                  <th class="numeric">Retorno 30 dias</th><th class="numeric">Próximo ano</th>
+                  <th class="numeric">Ano / investido</th><th class="numeric">Ano / atual</th>
+                  <th>Vencimento</th><th></th>
+                </tr></thead>
+                <tbody id="contributions-body"><tr><td colspan="15" class="empty-state">Carregando aportes…</td></tr></tbody>
+                <tfoot id="contributions-summary"></tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div id="quotes-view" hidden>
+            <form id="quotes-form" class="quotes-form">
+              <div class="panel-heading contribution-heading">
+                <div class="contribution-heading-title">
+                  <button class="button button-secondary" id="back-from-quotes" type="button">← Minha carteira</button>
+                  <div>
+                    <p class="eyebrow">ATUALIZAÇÃO MANUAL</p>
+                    <h2>Valores atuais da carteira</h2>
+                  </div>
+                </div>
+                <button class="button button-primary" type="submit">Salvar alterados</button>
+              </div>
+              <p class="muted contributions-note">Cada linha corresponde a um aporte individual, com sua própria data e valor atual. Escolha a moeda, informe o valor nessa moeda e salve a linha; o botão do topo grava somente as linhas alteradas.</p>
+              <div class="table-wrap quote-table-wrap">
+                <table class="quote-table">
+                  <thead><tr><th>Corretora</th><th>Investimento</th><th>Aporte</th><th class="numeric">Valor atual do aporte</th><th>Moeda</th><th>Ação</th></tr></thead>
+                  <tbody id="quote-list"></tbody>
+                </table>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel calendar-panel">
+          <details id="calendar-details">
+            <summary>
+              <span><span class="eyebrow">CALENDÁRIO</span><strong>Dias úteis e feriados</strong><small id="holiday-count">—</small></span>
+              <span class="summary-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="calendar-content">
+              <div class="calendar-copy"><p>O calendário inicial usa a lista de feriados da carteira original. Inclua aqui feriados bancários locais ou datas especiais que afetem os cálculos.</p></div>
+              <form id="holiday-form" class="holiday-form">
+                <label>Data<input type="date" name="date" required></label>
+                <label>Nome do feriado<input type="text" name="name" maxlength="140" placeholder="Ex.: feriado estadual" required></label>
+                <button class="button button-secondary" type="submit">Adicionar data</button>
+              </form>
+              <div class="holiday-list-wrap">
+                <div class="list-caption">Próximos feriados cadastrados</div>
+                <ul class="holiday-list" id="holiday-list"><li class="muted">Carregando calendário…</li></ul>
+              </div>
+            </div>
+          </details>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Dados guardados no volume local do Docker.</span>
+        <span>Calendário com <span id="calendar-footnote">—</span> datas.</span>
+      </footer>
+    </div>
+
+    <dialog class="modal modal-wide" id="product-dialog">
+      <div class="modal-card modal-card-wide">
+        <div class="modal-heading">
+          <div><p class="eyebrow">CARTEIRA DE PRODUTOS</p><h2 id="product-picker-title">Selecione um produto</h2></div>
+          <button class="icon-button" type="button" data-close="product-dialog" aria-label="Fechar">×</button>
+        </div>
+        <p class="muted" id="product-picker-hint">Escolha um produto para registrar outro aporte ou cadastre um produto novo.</p>
+        <div class="table-wrap product-list-wrap" id="product-list">
+          <table class="product-picker-table">
+            <thead><tr><th id="product-picker-brokerage-header">Corretora</th><th>Tipo</th><th>Produto</th><th></th></tr></thead>
+            <tbody><tr><td colspan="4" class="empty-state">Carregando produtos…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="modal-actions">
+          <button class="button button-primary" id="new-product-button" type="button">＋ Cadastrar novo produto</button>
+          <span class="action-spacer"></span>
+          <button class="button button-quiet" type="button" data-close="product-dialog">Fechar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="holding-dialog">
+      <form id="holding-form" class="modal-card">
+        <div class="modal-heading">
+          <div><p class="eyebrow">CADASTRO DO PRODUTO</p><h2 id="holding-dialog-title">Novo produto</h2></div>
+          <button class="icon-button" type="button" data-close="holding-dialog" aria-label="Fechar">×</button>
+        </div>
+        <input type="hidden" name="id">
+        <div class="form-grid">
+          <label>Corretora<input name="brokerage" type="text" maxlength="100" required placeholder="Ex.: Ágora"></label>
+          <label>Tipo de investimento<select name="asset_type" required>
+            <option value="titulo_publico">Título público</option><option value="titulo_privado">Título privado</option>
+            <option value="cdb">CDB</option><option value="lci">LCI</option><option value="lca">LCA</option>
+            <option value="fundo">Fundo</option><option value="acao">Ação</option><option value="fii">FII</option>
+            <option value="etf">ETF</option><option value="bdr">BDR</option><option value="cripto">Criptoativo</option>
+            <option value="ouro">Ouro</option><option value="coe">COE</option><option value="opcao">Opção</option>
+            <option value="previdencia">Previdência</option><option value="outro">Outro</option>
+          </select></label>
+          <label class="span-2">Nome do investimento<input name="name" type="text" maxlength="140" required placeholder="Ex.: Tesouro IPCA+ 2035, PETR4, Bitcoin"></label>
+          <label id="holding-tax-note-wrap">Tributo / taxa (informativo)<input name="tax_note" type="text" maxlength="140" placeholder="Ex.: IR, custódia"></label>
+        </div>
+        <p class="form-hint" id="holding-form-hint">O produto identifica apenas a corretora, o tipo e o nome. Datas, quantidades e valores ficam nos aportes individuais.</p>
+        <div class="modal-actions">
+          <button class="button button-danger" id="delete-holding-button" type="button" hidden>Excluir produto</button>
+          <span class="action-spacer"></span>
+          <button class="button button-quiet" type="button" data-close="holding-dialog">Cancelar</button>
+          <button class="button button-primary" type="submit" id="save-product-button">Salvar produto</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="contribution-dialog">
+      <form id="contribution-form" class="modal-card">
+        <div class="modal-heading">
+          <div><p class="eyebrow">APORTE INDIVIDUAL</p><h2 id="contribution-dialog-title">Novo aporte</h2></div>
+          <button class="icon-button" type="button" data-close="contribution-dialog" aria-label="Fechar">×</button>
+        </div>
+        <input type="hidden" name="id">
+        <div class="form-grid">
+          <label><span id="contribution-currency-label">Moeda de entrada</span><select name="currency"><option value="BRL">Real (BRL)</option><option value="USD">Dólar (USD)</option><option value="BTC">Bitcoin (BTC)</option></select></label>
+          <label>Data do aporte<input name="purchase_date" type="date"></label>
+          <label>Data de vencimento<input name="maturity_date" type="date"></label>
+          <label>Quantidade / cotas<input name="units" type="number" min="0" step="0.00000001" required></label>
+          <label><span data-money-label="invested_value">Valor investido (BRL)</span><input name="invested_value" type="number" min="0" step="0.01" required><small class="currency-equivalent" data-money-preview="invested_value"></small></label>
+          <label><span data-money-label="current_value">Valor atual deste aporte (BRL)</span><input name="current_value" type="number" min="0" step="0.01" required><small class="currency-equivalent" data-money-preview="current_value"></small></label>
+          <label><span data-money-label="current_unit_price">Preço atual por unidade (BRL)</span><input name="current_unit_price" type="number" min="0" step="0.00000001" readonly><small class="currency-equivalent" data-money-preview="current_unit_price">Calculado pelo valor atual dividido pela quantidade.</small></label>
+          <label>Data de referência<input name="reference_date" type="date"></label>
+          <label class="span-2">Tributo / taxa (informativo)<input name="tax_note" type="text" maxlength="140" placeholder="Ex.: IR, custódia"></label>
+        </div>
+        <p class="form-hint" id="contribution-fx-preview">Valores são armazenados em reais. Sem data de aporte, esta linha não terá taxa diária ou projeções.</p>
+        <div class="modal-actions">
+          <button class="button button-danger" id="delete-contribution-button" type="button" hidden>Excluir aporte</button>
+          <span class="action-spacer"></span>
+          <button class="button button-quiet" type="button" data-close="contribution-dialog">Cancelar</button>
+          <button class="button button-primary" type="submit">Salvar aporte</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="agora-import-dialog">
+      <form id="agora-import-form" class="modal-card modal-card-wide">
+        <div class="modal-heading">
+          <div><p class="eyebrow">IMPORTAÇÃO DE POSIÇÕES</p><h2>Extrato da Ágora</h2></div>
+          <button class="icon-button" type="button" data-close="agora-import-dialog" aria-label="Fechar">×</button>
+        </div>
+        <p class="muted" id="agora-import-description">Revise as posições encontradas. A data de referência do extrato não é a data do aporte; preencha o aporte quando souber. Reimportações atualizam as posições da Ágora identificadas pelo extrato e preservam cadastros manuais.</p>
+        <div class="import-report" id="agora-import-report"></div>
+        <div class="import-items" id="agora-import-items"></div>
+        <div class="modal-actions">
+          <span class="action-spacer"></span>
+          <button class="button button-quiet" type="button" data-close="agora-import-dialog">Cancelar</button>
+          <button class="button button-primary" type="submit">Importar posições</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="change-password-dialog">
+      <form id="change-password-form" class="modal-card">
+        <div class="modal-heading">
+          <div><p class="eyebrow">SEGURANÇA DA CONTA</p><h2 id="change-password-title">Trocar senha</h2></div>
+          <button class="icon-button" type="button" data-close="change-password-dialog" id="change-password-close" aria-label="Fechar">×</button>
+        </div>
+        <label>Senha atual<input name="current_password" type="password" autocomplete="current-password" required></label>
+        <div class="form-grid password-fields">
+          <label>Nova senha<input name="new_password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+          <label>Confirme a nova senha<input name="confirm_password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+        </div>
+        <p class="form-hint">Use pelo menos 12 caracteres. Após a troca, entre novamente com a nova senha.</p>
+        <div class="modal-actions">
+          <span class="action-spacer"></span>
+          <button class="button button-quiet" type="button" data-close="change-password-dialog" id="change-password-cancel">Cancelar</button>
+          <button class="button button-primary" type="submit">Salvar senha</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="users-dialog">
+      <div class="modal-card modal-card-wide">
+        <div class="modal-heading">
+          <div><p class="eyebrow">ADMINISTRAÇÃO</p><h2>Usuários</h2></div>
+          <button class="icon-button" type="button" data-close="users-dialog" aria-label="Fechar">×</button>
+        </div>
+        <p class="muted">A carteira é compartilhada entre os usuários. As permissões controlam quem pode editar posições, calendário e backups.</p>
+        <div class="user-list-wrap" id="user-list"></div>
+        <div class="modal-actions">
+          <button class="button button-primary" id="create-user-button" type="button">＋ Criar usuário</button>
+          <span class="action-spacer"></span>
+          <button class="button button-quiet" type="button" data-close="users-dialog">Fechar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="user-editor-dialog">
+      <form id="user-editor-form" class="modal-card">
+        <div class="modal-heading">
+          <div><p class="eyebrow">CONTA DE ACESSO</p><h2 id="user-editor-title">Criar usuário</h2></div>
+          <button class="icon-button" type="button" data-close="user-editor-dialog" aria-label="Fechar">×</button>
+        </div>
+        <input type="hidden" name="id">
+        <div class="form-grid">
+          <label>Usuário<input name="username" type="text" minlength="3" maxlength="32" pattern="[a-zA-Z0-9._-]+" required></label>
+          <label>Nome<input name="name" type="text" maxlength="100" required></label>
+          <label class="span-2">Senha inicial ou nova senha<input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>
+          <label class="check-line span-2" id="active-user-wrap"><input name="active" type="checkbox" checked> Conta ativa</label>
+        </div>
+        <fieldset class="permission-set">
+          <legend>Permissões</legend>
+          <label class="check-line"><input name="can_view_portfolio" type="checkbox" checked> Ver carteira e projeções</label>
+          <label class="check-line"><input name="can_edit_positions" type="checkbox"> Criar e editar posições e valores</label>
+          <label class="check-line"><input name="can_manage_calendar" type="checkbox"> Alterar feriados do calendário</label>
+          <label class="check-line"><input name="can_manage_backups" type="checkbox"> Baixar e restaurar backups</label>
+        </fieldset>
+        <p class="form-hint" id="user-password-hint">O usuário deverá trocar a senha ao entrar pela primeira vez. Mínimo de 12 caracteres.</p>
+        <div class="modal-actions">
+          <button class="button button-danger" id="delete-user-button" type="button" hidden>Excluir usuário</button>
+          <span class="action-spacer"></span>
+          <button class="button button-quiet" type="button" data-close="user-editor-dialog">Cancelar</button>
+          <button class="button button-primary" type="submit">Salvar usuário</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

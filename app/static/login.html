@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111d35">
+    <title>Entrar — Investimentos</title>
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body class="login-page">
+    <main class="login-card">
+      <a class="brand login-brand" href="/">
+        <span class="brand-mark">T</span>
+        <span><strong>Investimentos</strong><small>carteira e projeções</small></span>
+      </a>
+      <p class="eyebrow">ACESSO PRIVADO</p>
+      <h1>Bem-vindo de volta.</h1>
+      <p class="muted">Entre com seu usuário e sua senha.</p>
+      <form id="login-form" class="login-form">
+        <label>Usuário<input name="username" type="text" autocomplete="username" maxlength="32" required autofocus></label>
+        <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="button button-primary" type="submit">Entrar</button>
+        <p class="form-error" id="login-error" role="alert" hidden></p>
+      </form>
+      <script>
+        const form = document.querySelector('#login-form');
+        const error = document.querySelector('#login-error');
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          error.hidden = true;
+          const formData = new FormData(form);
+          const username = formData.get('username');
+          const password = formData.get('password');
+          try {
+            const response = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({username, password})
+            });
+            const body = await response.json();
+            if (!response.ok) throw new Error(body.detail || 'Não foi possível entrar.');
+            window.location.assign('/');
+          } catch (exception) {
+            error.textContent = exception.message || 'Falha de conexão.';
+            error.hidden = false;
+          }
+        });
+      </script>
+    </main>
+  </body>
+</html>

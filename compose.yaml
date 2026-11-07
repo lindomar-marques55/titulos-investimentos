@@ -1,0 +1,57 @@
+name: titulos-investimentos
+
+services:
+  titulos:
+    image: local/titulos-investimentos:1.5.0
+    pull_policy: never
+    container_name: titulos-investimentos
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    env_file:
+      - /DATA/AppData/titulos-investimentos/app.env
+    environment:
+      DATA_DIR: /data
+    ports:
+      - "8082:8000"
+    volumes:
+      - /DATA/AppData/titulos-investimentos/data:/data
+    labels:
+      icon: http://10.1.1.6:8082/static/icon.svg
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+x-casaos:
+  id: com.lindomar.titulos-investimentos
+  main: titulos
+  index: /
+  port_map: "8082"
+  scheme: http
+  icon: http://10.1.1.6:8082/static/icon.svg
+  title:
+    en_US: Investments
+    pt_BR: Investimentos
+  tagline:
+    en_US: Investment portfolio and projections
+    pt_BR: Carteira de investimentos e projeções
+  description:
+    en_US: Private portfolio tracking with projections and user management.
+    pt_BR: Acompanhamento privado da carteira, projeções e gerenciamento de usuários.
+  author: Lindomar
+  developer: Investimentos
+  category: Finance
+  version: "1.5.0"
